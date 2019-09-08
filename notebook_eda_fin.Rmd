@@ -24,7 +24,7 @@ O pacote mais sólido para importar dados de cotações de ações é o *quantmo
 
 Inicialmente, vamos carregar o pacote *quantmod*:
 
-```{r, echo = FALSE}
+```{r, warnings = FALSE}
 library(quantmod)
 ```
 
@@ -70,37 +70,153 @@ Esse foi um exemplo simples. A aula de hoje trabalhará com mais ações. Antes 
 rm(list = ls())
 ```
 
+#### 1.1 Download das cotações, volume e retorno ajustado
+
 Vamos realizar o download das cotações diárias das ações ordinárias da Embraer, IRB, Itau Unibanco, Magazine Luiza, Petrobrás e Vale para o período de 2010-Atual. Para realizar esse procedimentos, precisamos saber o ticker dessas ações. Para obter o ticker, consulte-o no yahoo finance. Então, posso omitir a data final que ele interpretará como o último dia de negociação. 
 
-```{r, echo = FALSE, warning=FALSE}
+```{r, warning=FALSE}
 acoes <- c("EMBR3.SA", "ITUB3.SA", "MGLU3.SA", "PETR3.SA","VALE3.SA")
-getSymbols(acoes, from = "2010-01-01", periodicity = "daily")
+env <- new.env()
+getSymbols(acoes, env = env, from = "2010-01-01", periodicity = "daily")
 ```
-
-Apareceram alguns avisos, pois existem algumas observações faltando. Isso não será um problema porque ele ajusta automaticamente. 
 
 Visualizaremos, a seguir, os dados baixados:
+
 ```{r}
-head(EMBR3.SA)
-head(ITUB3.SA)
-head(MGLU3.SA)
-head(PETR3.SA)
-head(VALE3.SA)
+head(env$EMBR3.SA)
+head(env$ITUB3.SA)
+head(env$MGLU3.SA)
+head(env$PETR3.SA)
+head(env$VALE3.SA)
 ```
 
-É possível automatizar o processo a partir da função `lapply` que realiza um loop. Esse loop aplicará a função `head` em cada objeto do meu ambiente que pode ser acessado a partir de: mget(ls()). Veja a seguir: 
+### 2. Manipulação de dados
+
+É possível automatizar o processo acima a partir da função `lapply` que realiza um loop. Esse loop aplicará a função `head` em cada objeto do meu ambiente `env`. Veja a seguir: 
 
 ```{r}
 # vendo o cabeçalho - iterando pelos objetos do ambiente
-lapply(mget(ls()), head)
+lapply(env, head)
 ```
 
 Perceba que temos cotações de abertura; a cotação mais alta do dia e mais baixa do dia; a cotação de fechamento; o volume negociado e o retorno ajustado. 
 
-Uma operação útil do pacote *quantmod* é a possibilidade de realizar o plot do objeto. O gráfico gerado se refere à volatilidade do retorno ajustado. Vou fazer um loop com a funçõ `lapply` no ambiente, retirando o primeiro objeto que é a lista com os tickers:
+Uma operação útil do pacote *quantmod* é a possibilidade de realizar o plot do objeto. O gráfico gerado se refere à volatilidade do retorno ajustado. Vou fazer um loop com a funçõ `lapply` no ambiente `env`, retirando o primeiro objeto que é a lista com os tickers:
 
 ```{r}
-lapply(mget(ls())[-1], plot)
+lapply(env, plot)
+```
+
+Vamos extrair as informações do ambiente e salvá-las em tabelas individuais. É importante salvar em uma lista.
+
+```{r}
+lista <- list(EMBR3 = env$EMBR3.SA, ITUB3 = env$ITUB3.SA, MGLU3 = env$MGLU3.SA, 
+              PETR3 = env$PETR3.SA, VALE3 = env$VALE3.SA)
+```
+
+Agora vamos selecionar a cotação de abertura e de fechamento e o retorno ajustado. Em seguida, salvaremos os dados em uma nova lista, chamada de `listaf`. Após, podemos extrair as tabelas, individualmente, realizando um loop na `listaf` de forma a fazer um `assign` para cada acão, usando o Ticker como o nome de cada objeto. 
+
+```{r}
+# criar um vetor para selecionar as colunas números 1, 4 e 6
+cols = c(1,4,6)
+
+# visualizar a forma de fazer indexing em listas lista[[i]][r,c]
+lista[[1]][1:6,cols]
+
+# vamos extrair apenas as colunas 1 e 6 e salvar no objeto listaf que é uma lista
+listaf <- lapply(lista, function(x) x[,cols])
+
+# visualizar a estrutura de listaf
+str(listaf)
+
+# realizar um loop para criar um objeto com o seu próprio ticker para cada 
+for (i in seq(listaf)){
+  assign(paste0(names(listaf)[i]), listaf[[i]])
+}
+```
+
+Agora, se visualizarmos o nosso ambiente, veremos que temos os objetos desejados EMBR3, ITUB3, MGLU3, PETR3 e VALE3. 
+
+```{r}
+head(EMBR3)
+head(PETR3)
+```
+
+Esse procedimento pode ser automatizado, basta que se crie uma função que recebe:
+
+* os tickers
+* o período
+* a periodicidade
+* as colunas (variáveis)
+
+Na verdade, esse é o exercício que vocês devem fazerem neste momento:
+
+```{r}
+# exercício 1: Crie uma função que automatiza o processo de importação e extração de informações, salvando-as em objetos para cada empresa individualmente.
+
+f <- function(tickers, data_inicial, data_final = Sys.Date(), periodicity = "daily", informacoes){
+  
+}
+
+```
+
+Quero o retorno dos preços de fechamento. Vamos criar o retorno linear:
+$$
+ret_t = \frac{P_t}{P_{t-1}} - 1
+$$
+```{r}
+retorno_linear <- function(x){
+  ret_l <- x/Lag(x) - 1
+  return(ret_l)
+}
+```
+
+Vamos aplicar essa função de retorno linear aos preços de fechamento da EMBR3 e criar um gráfico:
+
+```{r}
+ret_fechamento_embr3 <- retorno_linear(EMBR3$EMBR3.SA.Close)
+plot(ret_fechamento_embr3)
+```
+
+Sua vez de exercitar. Crie uma função que calcula o log-retorno, eq. abaixo, e plote o seu gráfico.
+$$ret_t = \frac{ln(P_t)}{ln(P_{t-1})} = ln(P_t) - ln(P_{t-1})$$. 
+
+```{r}
+
 ```
 
 
+### 3. Estatística descritiva
+
+#### 3.1 Importando bibliotecas de manipulação de dados
+
+Agora vamos importar as bibliotecas `tidyr` e `dplyr` para manipulação e análise de dados, assim como a biblioteca ggplot2 para criação de gráficos.
+
+```{r, warnings = FALSE}
+library(tidyr)
+library(dplyr)
+```
+
+#### 3.2 Tornando os dados no formato long
+
+Quando falamos que os dados no formato long (empilhados), isto é, quando cada coluna representa uma variável e teremos várias empresas para vários anos. 
+
+
+### 4. Análise exploratória
+
+#### 4.1 Importando a biblioteca ggplot2
+
+```{r}
+library(ggplot2)
+```
+
+#### 4.2 Gráfico das séries temporais
+
+```{r}
+g1 <-  ggplot(EMBR3, aes(time(EMBR3), EMBR3$EMBR3.SA.Open)) + geom_line() +
+  scale_x_date(date_labels =  "%d/%m/%Y", date_breaks = "1 year", 
+               limits=c(min(time(EMBR3)),max(time(EMBR3)))) +
+  xlab("") + ylab("EMBR3") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+g1
+```
