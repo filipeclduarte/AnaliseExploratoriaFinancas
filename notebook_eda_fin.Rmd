@@ -1,0 +1,106 @@
+---
+title: "Análise Exploratória de Séries Financeiras com o R"
+output: html_notebook
+---
+
+## Introdução
+
+Este curso tem o objetivo de ensinar importação de dados financeiros como cotações das ações da B3, manipulação de dados em série temporal, como calcular as estatísticas descritivas e como realizar análise exploratória de dados para séries financeiras.
+
+O pré-requisito deste curso é conhecer as operações básicas do R e estatística descritiva. 
+
+## Conteúdo
+
+O curso é dividido em 4 partes, são elas:
+
+1.  Importação de dados
+2.  Manipulação de dados 
+3.  Estatística descritiva
+4.  Análise exploratória de dados
+
+### 1. Importação de dados com o pacote *quantmod*
+
+O pacote mais sólido para importar dados de cotações de ações é o *quantmod* (Quantitative Financial Modelling Framework). É possível criar um ambiente no qual *quants* possam analisar e desenvolver modelos para *trading*. 
+
+Inicialmente, vamos carregar o pacote *quantmod*:
+
+```{r, echo = FALSE}
+library(quantmod)
+```
+
+Uma vez carregado o pacote, podemos realizar o download das cotações diárias.
+Inicialmente, vamos baixar os dados do Ibov para o ano de 2019. A função para realizar o download dos dados é `getSymbols()` com os argumentos: ticker(s), from (data de início), to (data final), periodicity (periodicidade dos dados). A periodicidade pode ser diária (daily), semanal (weekly) e mensal (monthly).
+
+```{r}
+getSymbols("^BVSP", from = "2019-01-01", to = Sys.Date(), periodicity='daily')
+```
+
+Perceba que eu não salvei em nenhum objeto, porém quando olho o meu ambiente, percebo que existe um objeto chamado **BVPS**. 
+Agora podemos visualizar as 6 primeiras linhas dos dados usando a função head:
+
+```{r}
+head(BVSP)
+```
+
+O objeto é `xts` que tem característica de série temporal. 
+Vejamos a estrutura dele:
+
+```{r}
+str(BVSP)
+```
+
+Podemos acessar qualquer variável desse objeto, como o valor de abertura, fechamento, volume etc, por meio do operador `$`:
+
+```{r}
+head(BVSP$BVSP.Close)
+head(BVSP$BVSP.Volume)
+```
+
+Vamos visualizar um gráfico da série de Fechamento:
+
+```{r}
+plot(BVSP$BVSP.Close)
+```
+
+Perceba que o gráfico já foi estruturado para o objeto `xts` do pacote `quantmod`.
+
+Esse foi um exemplo simples. A aula de hoje trabalhará com mais ações. Antes de iniciar o download das demais informações, é importante limpar o ambiente. 
+
+```{r}
+rm(list = ls())
+```
+
+Vamos realizar o download das cotações diárias das ações ordinárias da Embraer, IRB, Itau Unibanco, Magazine Luiza, Petrobrás e Vale para o período de 2010-Atual. Para realizar esse procedimentos, precisamos saber o ticker dessas ações. Para obter o ticker, consulte-o no yahoo finance. Então, posso omitir a data final que ele interpretará como o último dia de negociação. 
+
+```{r, echo = FALSE, warning=FALSE}
+acoes <- c("EMBR3.SA", "ITUB3.SA", "MGLU3.SA", "PETR3.SA","VALE3.SA")
+getSymbols(acoes, from = "2010-01-01", periodicity = "daily")
+```
+
+Apareceram alguns avisos, pois existem algumas observações faltando. Isso não será um problema porque ele ajusta automaticamente. 
+
+Visualizaremos, a seguir, os dados baixados:
+```{r}
+head(EMBR3.SA)
+head(ITUB3.SA)
+head(MGLU3.SA)
+head(PETR3.SA)
+head(VALE3.SA)
+```
+
+É possível automatizar o processo a partir da função `lapply` que realiza um loop. Esse loop aplicará a função `head` em cada objeto do meu ambiente que pode ser acessado a partir de: mget(ls()). Veja a seguir: 
+
+```{r}
+# vendo o cabeçalho - iterando pelos objetos do ambiente
+lapply(mget(ls()), head)
+```
+
+Perceba que temos cotações de abertura; a cotação mais alta do dia e mais baixa do dia; a cotação de fechamento; o volume negociado e o retorno ajustado. 
+
+Uma operação útil do pacote *quantmod* é a possibilidade de realizar o plot do objeto. O gráfico gerado se refere à volatilidade do retorno ajustado. Vou fazer um loop com a funçõ `lapply` no ambiente, retirando o primeiro objeto que é a lista com os tickers:
+
+```{r}
+lapply(mget(ls())[-1], plot)
+```
+
+
