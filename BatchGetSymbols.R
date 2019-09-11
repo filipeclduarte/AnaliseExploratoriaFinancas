@@ -6,6 +6,7 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(scales)
+library(stringr)
 
 # Importando dados da Petrobrás - PETR4
 acao <- "PETR4.SA"

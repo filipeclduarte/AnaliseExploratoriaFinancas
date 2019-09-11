@@ -72,10 +72,10 @@ rm(list = ls())
 
 #### 1.1 Download das cotações, volume e retorno ajustado
 
-Vamos realizar o download das cotações diárias das ações ordinárias da Embraer, IRB, Itau Unibanco, Magazine Luiza, Petrobrás e Vale para o período de 2010-Atual. Para realizar esse procedimentos, precisamos saber o ticker dessas ações. Para obter o ticker, consulte-o no yahoo finance. Então, posso omitir a data final que ele interpretará como o último dia de negociação. 
+Vamos realizar o download das cotações diárias das ações ordinárias da Embraer, IRB, Itau Unibanco, Petrobrás e Vale para o período de 2010-Atual. Para realizar esse procedimentos, precisamos saber o ticker dessas ações. Para obter o ticker, consulte-o no yahoo finance. Então, posso omitir a data final que ele interpretará como o último dia de negociação. 
 
 ```{r, warning=FALSE}
-acoes <- c("EMBR3.SA", "ITUB3.SA", "MGLU3.SA", "PETR3.SA","VALE3.SA")
+acoes <- c("EMBR3.SA", "ITUB3.SA", "PETR3.SA","VALE3.SA")
 env <- new.env()
 getSymbols(acoes, env = env, from = "2010-01-01", periodicity = "daily")
 ```
@@ -85,7 +85,6 @@ Visualizaremos, a seguir, os dados baixados:
 ```{r}
 head(env$EMBR3.SA)
 head(env$ITUB3.SA)
-head(env$MGLU3.SA)
 head(env$PETR3.SA)
 head(env$VALE3.SA)
 ```
@@ -110,7 +109,7 @@ lapply(env, plot)
 Vamos extrair as informações do ambiente e salvá-las em tabelas individuais. É importante salvar em uma lista.
 
 ```{r}
-lista <- list(EMBR3 = env$EMBR3.SA, ITUB3 = env$ITUB3.SA, MGLU3 = env$MGLU3.SA, 
+lista <- list(EMBR3 = env$EMBR3.SA, ITUB3 = env$ITUB3.SA, 
               PETR3 = env$PETR3.SA, VALE3 = env$VALE3.SA)
 ```
 
@@ -121,7 +120,7 @@ Agora vamos selecionar a cotação de abertura e de fechamento e o retorno ajust
 cols = c(1,4,6)
 
 # visualizar a forma de fazer indexing em listas lista[[i]][r,c]
-lista[[1]][1:6,cols]
+#lista[[1]][1:6,cols]
 
 # vamos extrair apenas as colunas 1 e 6 e salvar no objeto listaf que é uma lista
 listaf <- lapply(lista, function(x) x[,cols])
@@ -129,13 +128,13 @@ listaf <- lapply(lista, function(x) x[,cols])
 # visualizar a estrutura de listaf
 str(listaf)
 
-# realizar um loop para criar um objeto com o seu próprio ticker para cada 
+# realizar um loop para criar objetos com o seu próprio ticker
 for (i in seq(listaf)){
   assign(paste0(names(listaf)[i]), listaf[[i]])
 }
 ```
 
-Agora, se visualizarmos o nosso ambiente, veremos que temos os objetos desejados EMBR3, ITUB3, MGLU3, PETR3 e VALE3. 
+Agora, se visualizarmos o nosso ambiente, veremos que temos os objetos desejados EMBR3, ITUB3, PETR3 e VALE3. 
 
 ```{r}
 head(EMBR3)
@@ -149,25 +148,19 @@ Esse procedimento pode ser automatizado, basta que se crie uma função que rece
 * a periodicidade
 * as colunas (variáveis)
 
-Na verdade, esse é o exercício que vocês devem fazerem neste momento:
+Agora, vamos criar uma função para calcular o retorno do preço de fechamento diário. O retorno de uma ação pode ser calculado de duas formas: linear e logaritmo.
 
-```{r}
-# exercício 1: Crie uma função que automatiza o processo de importação e extração de informações, salvando-as em objetos para cada empresa individualmente.
+Primeiro, vamos criar o retorno linear, cuja fórmula pode ser vista a seguir:
 
-f <- function(tickers, data_inicial, data_final = Sys.Date(), periodicity = "daily", informacoes){
-  
-}
-
-```
-
-Quero o retorno dos preços de fechamento. Vamos criar o retorno linear:
 $$
 ret_t = \frac{P_t}{P_{t-1}} - 1
 $$
+Perceba que teremos que pegar o preço de fechamento em t, dividir pelo preço de fechamento de t-1 e subtrair essa divisão por 1. A biblioteca **quantmod** possui uma função `Lag` que faz a operação de defasagem, isto é, ela permite que você crie uma nova variável que é defasada em 1 período. Isso é o que precisamos para obter o $P_{t-1}$. Veja abaixo como criar a função do retorno linear:
+
 ```{r}
 retorno_linear <- function(x){
   ret_l <- x/Lag(x) - 1
-  return(ret_l)
+  return(ret_l[-1,])
 }
 ```
 
@@ -178,7 +171,7 @@ ret_fechamento_embr3 <- retorno_linear(EMBR3$EMBR3.SA.Close)
 plot(ret_fechamento_embr3)
 ```
 
-Sua vez de exercitar. Crie uma função que calcula o log-retorno, eq. abaixo, e plote o seu gráfico.
+Sua vez de exercitar. Exercício: Crie uma função que calcula o log-retorno, eq. abaixo, e plote o seu gráfico.
 $$ret_t = \frac{ln(P_t)}{ln(P_{t-1})} = ln(P_t) - ln(P_{t-1})$$. 
 
 ```{r}
@@ -190,16 +183,64 @@ $$ret_t = \frac{ln(P_t)}{ln(P_{t-1})} = ln(P_t) - ln(P_{t-1})$$.
 
 #### 3.1 Importando bibliotecas de manipulação de dados
 
-Agora vamos importar as bibliotecas `tidyr` e `dplyr` para manipulação e análise de dados, assim como a biblioteca ggplot2 para criação de gráficos.
+Agora vamos importar as bibliotecas `tidyr` e `dplyr` para manipulação e análise de dados. 
 
 ```{r, warnings = FALSE}
 library(tidyr)
 library(dplyr)
+library(magrittr)
 ```
 
-#### 3.2 Tornando os dados no formato long
+#### 3.2 Juntando tabela de dados 
 
-Quando falamos que os dados no formato long (empilhados), isto é, quando cada coluna representa uma variável e teremos várias empresas para vários anos. 
+O pacote `dplyr` tem uma função que permite a junção de tabelas de dados que possuem índices em comum. No nosso caso, o índice é a data, pois nossos dados são em série temporal. Temos que transformar o tipo de objeto de *xts* para *data frame*.
+
+Antes de juntar as tabelas, precisamos criar as variáveis de retorno de fechamento a partir da nossa lista com as informações baixadas pelo pacote `quantmod`. A junção das tabelas será realizada pelo pacote `xts` com a função `merge.xts()` que fará a busca pelo índice que é uma data. 
+
+```{r}
+# vamos criar uma lista com as cotações de fechamento (lista_fechamento) e, em seguida, aplicaremos a funcao retorno_linear à lista_fechamento
+lista_fechamento <- lapply(lista, function(x) x[,4])
+lista_ret_fechamento <- lapply(lista_fechamento, retorno_linear)
+
+# realizar um loop para criar objetos com o seu próprio ticker
+for (i in seq(lista_ret_fechamento)){
+  assign(paste0(names(listaf)[i], "_ret"), lista_ret_fechamento[[i]])
+}
+
+# juntando as tabelas e salvando como um objeto
+dados_ret <- merge.xts(EMBR3_ret, ITUB3_ret, PETR3_ret, VALE3_ret)
+```
+
+Antes de realizar o empilhamento, precisamos transformar a tabela `dados_ret` em um `data frame`.
+
+```{r}
+# transformando em um data frame e removendo o nome das linhas
+df_ret <- data.frame(data = index(dados_ret), dados_ret)
+rownames(df_ret) <- NULL
+# vendo a estrutura dos dados
+str(df_ret)
+# vendo as 6 primeiras linhas
+head(df_ret)
+```
+
+
+#### 3.3 Tornando os dados no formato long
+
+Quando falamos que os dados no formato long (empilhados), isto é, quando cada coluna representa uma variável e teremos várias empresas para vários anos. Esse formato é o mais adequado para trabalhar com o pacote dplyr e ggplot2, conforme o próprio criador Hadley Wickham.
+
+```{r}
+df <- gather(df_ret, key = acao, value = retorno, -data) 
+df  
+```
+
+#### 3.4 Estatísticas com dplyr
+
+```{r}
+df %>%
+  na.omit() %>% 
+  group_by(acao) %>% 
+  summarize(n = n(), media = mean(retorno), mediana = median(retorno), desvpad = sd(retorno), min = min(retorno), max = max(retorno))
+```
 
 
 ### 4. Análise exploratória
@@ -213,10 +254,75 @@ library(ggplot2)
 #### 4.2 Gráfico das séries temporais
 
 ```{r}
-g1 <-  ggplot(EMBR3, aes(time(EMBR3), EMBR3$EMBR3.SA.Open)) + geom_line() +
-  scale_x_date(date_labels =  "%d/%m/%Y", date_breaks = "1 year", 
-               limits=c(min(time(EMBR3)),max(time(EMBR3)))) +
-  xlab("") + ylab("EMBR3") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+g1 <-  ggplot(df, aes(data, retorno, color = as.factor(acao))) +
+  geom_line() +
+  scale_x_date(date_labels =  "%d/%m/%Y", date_breaks = "1 year") +
+  xlab("") +
+  guides(col = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  facet_wrap(~acao)
 g1
 ```
+
+#### 4.3 Histograma
+
+```{r}
+# todos com facet
+g2 <-  ggplot(df, aes(retorno, color = acao, fill = acao)) +
+  geom_histogram(bins = 50) +
+  xlab("") +
+  guides(col = FALSE, fill = FALSE) +
+  facet_wrap(~acao)
+
+g2
+```
+
+#### 4.4 Box-plot
+
+```{r}
+g3 <-  ggplot(df, aes(acao,retorno, color = acao, fill = acao)) +
+  geom_boxplot() +
+  xlab("") +
+  guides(color = FALSE, fill = FALSE)
+
+g3
+
+```
+
+Vamos remover os outliers para visualizar melhor os gráficos
+
+```{r}
+df2 <- df %>% 
+filter(retorno > -0.5, retorno < 1)
+```
+
+```{r}
+g4 <-  ggplot(df2, aes(data, retorno, color = as.factor(acao))) +
+  geom_line() +
+  scale_x_date(date_labels =  "%d/%m/%Y", date_breaks = "1 year") +
+  xlab("") +
+  guides(color = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  facet_wrap(~acao)
+g4
+```
+
+```{r}
+g2 <-  ggplot(df2, aes(retorno, color = acao, fill = acao)) +
+  geom_histogram(bins = 50) +
+  xlab("") +
+  guides(color = FALSE, fill = FALSE) +
+  facet_wrap(~acao)
+
+g2
+```
+
+```{r}
+g3 <-  ggplot(df2, aes(acao,retorno, color = acao)) +
+  geom_boxplot() +
+  xlab("") +
+  guides(color = FALSE)
+
+g3
+```
+
