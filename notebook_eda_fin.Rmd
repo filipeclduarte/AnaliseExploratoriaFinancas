@@ -35,7 +35,7 @@ Inicialmente, vamos baixar os dados do Ibov para o ano de 2019. A função para 
 getSymbols("^BVSP", from = "2019-01-01", to = Sys.Date(), periodicity='daily')
 ```
 
-Perceba que eu não salvei em nenhum objeto, porém quando olho o meu ambiente, percebo que existe um objeto chamado **BVPS**. 
+Perceba que eu não salvei em nenhum objeto, porém quando olho o meu ambiente, percebo que existe um objeto chamado **BVSP**. 
 Agora podemos visualizar as 6 primeiras linhas dos dados usando a função head:
 
 ```{r}
@@ -100,7 +100,7 @@ lapply(env, head)
 
 Perceba que temos cotações de abertura; a cotação mais alta do dia e mais baixa do dia; a cotação de fechamento; o volume negociado e o retorno ajustado. 
 
-Uma operação útil do pacote *quantmod* é a possibilidade de realizar o plot do objeto. O gráfico gerado se refere à volatilidade do retorno ajustado. Vou fazer um loop com a funçõ `lapply` no ambiente `env`, retirando o primeiro objeto que é a lista com os tickers:
+Uma operação útil do pacote *quantmod* é a possibilidade de realizar o plot do objeto. O gráfico gerado se refere à volatilidade do retorno ajustado. Vou fazer um loop com a função `lapply` no ambiente `env`, retirando o primeiro objeto que é a lista com os tickers:
 
 ```{r}
 lapply(env, plot)
@@ -113,7 +113,7 @@ lista <- list(EMBR3 = env$EMBR3.SA, ITUB3 = env$ITUB3.SA,
               PETR3 = env$PETR3.SA, VALE3 = env$VALE3.SA)
 ```
 
-Agora vamos selecionar a cotação de abertura e de fechamento e o retorno ajustado. Em seguida, salvaremos os dados em uma nova lista, chamada de `listaf`. Após, podemos extrair as tabelas, individualmente, realizando um loop na `listaf` de forma a fazer um `assign` para cada acão, usando o Ticker como o nome de cada objeto. 
+Agora vamos selecionar a cotação de abertura e de fechamento e o retorno ajustado. Em seguida, salvaremos os dados em uma nova lista, chamada de `listaf`. Após, poderemos extrair as tabelas, individualmente, realizando um loop na `listaf` de forma que aplicaremos um `assign` para cada acão, usando o Ticker como o nome de cada objeto. 
 
 ```{r}
 # criar um vetor para selecionar as colunas números 1, 4 e 6
@@ -228,12 +228,18 @@ head(df_ret)
 
 Quando falamos que os dados no formato long (empilhados), isto é, quando cada coluna representa uma variável e teremos várias empresas para vários anos. Esse formato é o mais adequado para trabalhar com o pacote dplyr e ggplot2, conforme o próprio criador Hadley Wickham.
 
+A função **gather()** transforma as colunas em linhas criando uma variável que representará as colunas. A informação da data eu retiro para que ela não seja empilhada com as demais.
+
 ```{r}
 df <- gather(df_ret, key = acao, value = retorno, -data) 
 df  
 ```
 
 #### 3.4 Estatísticas com dplyr
+
+O próximo passo é o de calcular as estatísticas descritivas. Utilizaremos o pacote **dplyr** que é o que permite a manipulação de dados ao mesmo tempo em que se cria tabelas com as estatísticas.
+
+Vamos omitir os dados faltantes, faremos agrupamento pelas ações e apresentaremos a quantidade de observações (n), média, mediana, desvio-padrão, mínimo e máximo.
 
 ```{r}
 df %>%
@@ -242,10 +248,16 @@ df %>%
   summarize(n = n(), media = mean(retorno), mediana = median(retorno), desvpad = sd(retorno), min = min(retorno), max = max(retorno))
 ```
 
-
 ### 4. Análise exploratória
 
+A análise exploratória realizada a seguir representa a etapa de criação de gráficos. 
+
+O primeiro gráfico será o de linha, em que plotaremos o retorno das ações ao longo do tempo. 
+Em seguida faremos o histograma e o boxplot. 
+
 #### 4.1 Importando a biblioteca ggplot2
+
+A biblioteca utilizada para criar os gráficos é **ggplot2**, a qual carregaremos abaixo. 
 
 ```{r}
 library(ggplot2)
@@ -253,14 +265,15 @@ library(ggplot2)
 
 #### 4.2 Gráfico das séries temporais
 
+Para criar o gráfico da série temporal com o ggplot2, utilizaremos a função `geom_line()`.
+
 ```{r}
 g1 <-  ggplot(df, aes(data, retorno, color = as.factor(acao))) +
   geom_line() +
-  scale_x_date(date_labels =  "%d/%m/%Y", date_breaks = "1 year") +
   xlab("") +
   guides(col = FALSE) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
   facet_wrap(~acao)
+
 g1
 ```
 
